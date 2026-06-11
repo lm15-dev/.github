@@ -18,6 +18,44 @@
 
 lm15 is a **low-level foundation library** for talking to LLM providers: one canonical type system (`Part → Message → Request → Response`), exact serialization, a provider-agnostic error taxonomy, and thin adapters per provider — built on the standard library alone. No SDK dependencies, no magic call loops, no DSL. It is the layer you build *your* opinions on top of.
 
+## The universal type
+
+The whole model is **four nouns** — and one more for streaming:
+
+```
+Part  →  Message  →  Request  ⇢  Response
+                        ⇣ (streaming)
+              start → Delta… → end
+```
+
+- **Part** — the atom of content. Eleven kinds, one discriminated union: `text`, `image`, `audio`, `video`, `document`, `binary`, `tool_call`, `tool_result`, `thinking`, `refusal`, `citation`. A tool call's arguments are always called `input` — never `arguments` — everywhere, in every language.
+- **Message** — a role (`user`, `assistant`, `developer`, `tool`) plus parts. That's it.
+- **Request** — a model, messages, and optionally `system`, `tools`, and a `config` (max_tokens, temperature, reasoning, caching, tool choice…).
+- **Response** — always an assistant Message plus a `finish_reason` from a closed vocabulary, and `usage` where `null` honestly means "the provider didn't report it" (never silently `0`).
+- **Delta** — when streaming, typed fragments (`text`, `thinking`, `tool_call`, `audio`, `image`, `citation`) carrying a `part_index`, between exactly one `start` and exactly one `end` event. Deltas assemble into the same Response you'd have gotten without streaming.
+
+The same request, on the wire, to any provider:
+
+```json
+{
+  "model": "...",
+  "messages": [
+    {"role": "user", "parts": [
+      {"type": "text", "text": "What's in this image?"},
+      {"type": "image", "media_type": "image/png", "url": "https://…"}
+    ]},
+    {"role": "assistant", "parts": [
+      {"type": "tool_call", "id": "c1", "name": "zoom", "input": {"region": "left"}}
+    ]},
+    {"role": "tool", "parts": [
+      {"type": "tool_result", "id": "c1", "content": [{"type": "text", "text": "a lighthouse"}]}
+    ]}
+  ]
+}
+```
+
+Two escape hatches keep the universality honest instead of lossy: `extensions` on requests carries provider-specific knobs *in*, and `provider_data` on responses carries provider-specific payloads *out* — both opaque, never mutated, never pretending to be canonical. Everything else is closed: every field's type, default, omission behavior, and validation rule is written in [spec/types.md](https://github.com/lm15-dev/lm15-contract/blob/main/spec/types.md) and enforced by 49 numbered invariants.
+
 ## Why
 
 Every LLM SDK reinvents the same request/response shapes, drags in dozens of dependencies, and behaves subtly differently across providers and languages. lm15 inverts that: the **behavior is the spec**, the spec is machine-checked, and every implementation in every language must produce byte-identical wire requests and identical canonical parses.
