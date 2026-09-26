@@ -48,9 +48,9 @@ templates. It is the layer you build your own opinions on.
 | [Julia](https://github.com/lm15-dev/lm15-jl) | in development | from GitHub |
 | [R](https://github.com/lm15-dev/lm15-r) | API in design | — |
 
-All four released languages pass the same **1,583 contract checks**: the
-same program builds the same request and reads the same
-answer from the same reply in every language. A login saved from one
+All four released languages pass **every check of the shared contract**
+at the version they pin: the same program builds the same request and
+reads the same answer from the same reply in every language. A login saved from one
 language is used, and renewed, from another. Early ports in
 [Java](https://github.com/lm15-dev/lm15-java),
 [Ruby](https://github.com/lm15-dev/lm15-ruby),
